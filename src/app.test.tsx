@@ -1,0 +1,70 @@
+// @vitest-environment jsdom
+import { it, expect, vi } from "vitest";
+import { screen, within, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { key, parseData } from "./data";
+it("開催回作成・登録・編集・再起動復元・JSON読み戻し・削除ができる", async () => {
+  const user = userEvent.setup();
+  document.body.innerHTML = '<div id="root"></div>';
+  localStorage.clear();
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  await import("./main");
+  await user.click(
+    (await screen.findAllByRole("button", { name: "＋ 開催回を追加" }))[0],
+  );
+  await user.type(screen.getByLabelText(/開催回名/), "検証開催回");
+  await user.type(screen.getByLabelText(/^日目/), "1日目、2日目");
+  await user.type(screen.getByLabelText(/^ホール/), "東、西");
+  await user.click(screen.getByRole("button", { name: "開催回を作成" }));
+  await user.click(
+    screen.getAllByRole("button", { name: "＋ サークルを登録" })[0],
+  );
+  await user.type(screen.getByLabelText(/^サークル名/), "テストサークル");
+  await user.type(screen.getByLabelText(/^場所/), " A-01a ");
+  await user.type(screen.getByLabelText(/^URL/), "不正URL");
+  await user.click(screen.getByRole("button", { name: "登録する" }));
+  expect(screen.getByRole("alert").textContent).toContain("https://");
+  await user.clear(screen.getByLabelText(/^URL/));
+  await user.type(screen.getByLabelText(/^URL/), "@circle");
+  await user.click(screen.getByRole("button", { name: "登録する" }));
+  expect(await screen.findByText("テストサークル")).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "編集" }));
+  await user.clear(screen.getByLabelText(/^サークル名/));
+  await user.type(screen.getByLabelText(/^サークル名/), "編集済み");
+  await user.click(screen.getByRole("button", { name: "変更を保存" }));
+  expect(await screen.findByText("編集済み")).toBeTruthy();
+  const createURL = vi.fn(() => "blob:backup");
+  Object.defineProperty(URL, "createObjectURL", {
+    value: createURL,
+    configurable: true,
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    value: vi.fn(),
+    configurable: true,
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  await user.click(screen.getByRole("button", { name: "↓ JSONを書き出す" }));
+  expect(createURL).toHaveBeenCalledOnce();
+  const backup = localStorage.getItem(key)!;
+  expect(parseData(backup).events[0].circles[0].locationRaw).toBe(" A-01a ");
+  // 新しいモジュールとReactルートでアプリを開き直し、永続データから復元。
+  document.body.innerHTML = '<div id="root"></div>';
+  vi.resetModules();
+  await import("./main");
+  expect(await screen.findByText("編集済み")).toBeTruthy();
+  const file = new File([backup], "backup.json", { type: "application/json" });
+  Object.defineProperty(file, "text", { value: async () => backup });
+  fireEvent.change(document.querySelector("input[type=file]")!, {
+    target: { files: [file] },
+  });
+  await screen.findByText(/JSONを読み戻して保存しました/);
+  await user.click(screen.getByRole("button", { name: "編集済みを削除" }));
+  await waitFor(() =>
+    expect(
+      within(document.querySelector("main")!).queryByText("編集済み"),
+    ).toBeNull(),
+  );
+  expect(parseData(localStorage.getItem(key)!).events[0].circles).toHaveLength(
+    0,
+  );
+});
