@@ -631,3 +631,55 @@ form textarea {
     font-size: 9px;
   }
 }
+.display-assist {
+  background: #f3f8f5;
+  border: 1px solid #dce8df;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0 24px;
+}
+.display-assist h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.display-assist p,
+.display-assist li {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #637e70;
+}
+.display-assist .check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 11px;
+}
+.display-assist .check input {
+  width: auto;
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+.recognition dl {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  font-size: 12px;
+  gap: 8px;
+}
+.recognition dt {
+  color: #718779;
+}
+.recognition dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.raw-input {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.display-assist ul {
+  padding-left: 18px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

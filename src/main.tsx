@@ -13,6 +13,7 @@ import {
   updateCircle,
 } from "./data";
 import "./style.css";
+import { DisplayNameAssist } from "./DisplayNameAssist";
 const uid = () => crypto.randomUUID();
 function App() {
   const [initial] = useState(() => {
@@ -509,7 +510,7 @@ function EventForm({ submit }: { submit: (e: Event) => void }) {
     </form>
   );
 }
-function CircleForm({
+export function CircleForm({
   event,
   circle,
   submit,
@@ -519,6 +520,12 @@ function CircleForm({
   submit: (c: Circle) => void;
 }) {
   const [err, setErr] = useState("");
+  const [fields, setFields] = useState({
+    name: circle?.name || "",
+    day: circle?.day || "",
+    hall: circle?.hall || "",
+    location: circle?.locationRaw || "",
+  });
   return (
     <form
       onSubmit={(e) => {
@@ -561,20 +568,33 @@ function CircleForm({
         });
       }}
     >
+      <DisplayNameAssist
+        days={event.days}
+        halls={event.halls}
+        values={fields}
+        onChange={setFields}
+      />
       <label>
         サークル名 <b>必須</b>
         <input
           name="name"
           required
           autoFocus
-          defaultValue={circle?.name}
+          value={fields.name}
+          onChange={(e) => setFields({ ...fields, name: e.target.value })}
           placeholder="サークル名を入力"
         />
       </label>
       <div className="form-grid">
         <label>
           参加日目 <b>必須</b>
-          <select name="day" defaultValue={circle?.day}>
+          <select
+            name="day"
+            required
+            value={fields.day}
+            onChange={(e) => setFields({ ...fields, day: e.target.value })}
+          >
+            <option value="">日目を選択</option>
             {event.days.map((d) => (
               <option key={d}>{d}</option>
             ))}
@@ -582,7 +602,13 @@ function CircleForm({
         </label>
         <label>
           ホール <b>必須</b>
-          <select name="hall" defaultValue={circle?.hall}>
+          <select
+            name="hall"
+            required
+            value={fields.hall}
+            onChange={(e) => setFields({ ...fields, hall: e.target.value })}
+          >
+            <option value="">ホールを選択</option>
             {event.halls.map((h) => (
               <option key={h}>{h}</option>
             ))}
@@ -594,7 +620,8 @@ function CircleForm({
         <input
           name="location"
           required
-          defaultValue={circle?.locationRaw}
+          value={fields.location}
+          onChange={(e) => setFields({ ...fields, location: e.target.value })}
           placeholder="例：A-01a（入力した原文を保持します）"
         />
       </label>
