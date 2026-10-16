@@ -520,6 +520,7 @@ export function CircleForm({
   submit: (c: Circle) => void;
 }) {
   const [err, setErr] = useState("");
+  const [priorityValue, setPriorityValue] = useState(circle?.priority || 3);
   const [fields, setFields] = useState({
     name: circle?.name || "",
     day: circle?.day || "",
@@ -622,26 +623,41 @@ export function CircleForm({
           required
           value={fields.location}
           onChange={(e) => setFields({ ...fields, location: e.target.value })}
-          placeholder="例：A-01a（入力した原文を保持します）"
+          placeholder="架空の例：A-01a（入力原文を保持）"
         />
       </label>
-      <label>
-        優先度 <b>必須</b>
-        <select name="priority" defaultValue={circle?.priority || 3}>
-          {[5, 4, 3, 2, 1].map((p) => (
-            <option key={p} value={p}>
-              {p}
-              {p === 5 ? " — 最優先" : p === 1 ? " — 低め" : ""}
-            </option>
+      <fieldset className="star-priority">
+        <legend>
+          優先度 <b>必須</b>
+        </legend>
+        <div className="stars">
+          {[1, 2, 3, 4, 5].map((p) => (
+            <label key={p}>
+              <input
+                type="radio"
+                name="priority"
+                value={p}
+                checked={priorityValue === p}
+                onChange={() => setPriorityValue(p)}
+                aria-label={`優先度${p}${p === 5 ? "（最高）" : ""}`}
+              />
+              <span
+                aria-hidden="true"
+                className={p <= priorityValue ? "filled" : ""}
+              >
+                {p <= priorityValue ? "★" : "☆"}
+              </span>
+            </label>
           ))}
-        </select>
-      </label>
+        </div>
+        <p aria-live="polite">現在の優先度：{priorityValue} / 5（5が最高）</p>
+      </fieldset>
       <label>
         URL または Xの@ユーザー名 <small>任意</small>
         <input
           name="link"
           defaultValue={circle?.link}
-          placeholder="https://… または @username"
+          placeholder="https://… または @ユーザー名"
         />
       </label>
       <p className="hint">

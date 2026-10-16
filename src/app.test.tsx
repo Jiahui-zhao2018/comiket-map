@@ -1,3 +1,4 @@
+// 以下の名前・識別子・配置はすべて架空の検証データです。
 // @vitest-environment jsdom
 import { it, expect, vi } from "vitest";
 import { screen, within, waitFor, fireEvent } from "@testing-library/react";
@@ -27,7 +28,10 @@ it("開催回作成・登録・編集・再起動復元・JSON読み戻し・削
   await user.click(screen.getByRole("button", { name: "登録する" }));
   expect(screen.getByRole("alert").textContent).toContain("https://");
   await user.clear(screen.getByLabelText(/^URL/));
-  await user.type(screen.getByLabelText(/^URL/), "@circle");
+  await user.type(
+    screen.getByLabelText(/^URL/),
+    "https://circle-a.example.invalid",
+  );
   await user.click(screen.getByRole("button", { name: "登録する" }));
   expect(await screen.findByText("テストサークル")).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "編集" }));
@@ -75,14 +79,17 @@ it("開催回作成・登録・編集・再起動復元・JSON読み戻し・削
   );
   const dialog = within(screen.getByRole("dialog"));
   const before = localStorage.getItem(key);
-  await user.type(dialog.getByLabelText("Xの表示名"), "92M 2日目東ユ 42ab");
+  await user.type(
+    dialog.getByLabelText("Xの表示名"),
+    "架空サークルB 2日目東ユ 42ab",
+  );
   await user.click(dialog.getByRole("button", { name: "読み取る" }));
   expect(localStorage.getItem(key)).toBe(before);
   await user.click(
     dialog.getByRole("button", { name: "候補をフォームに反映" }),
   );
   expect((dialog.getByLabelText(/^サークル名/) as HTMLInputElement).value).toBe(
-    "",
+    "架空サークルB",
   );
   expect((dialog.getByLabelText(/^参加日目/) as HTMLSelectElement).value).toBe(
     "2日目",
@@ -91,28 +98,35 @@ it("開催回作成・登録・編集・再起動復元・JSON読み戻し・削
     "ユ-42ab",
   );
   expect(localStorage.getItem(key)).toBe(before);
-  await user.click(
-    dialog.getByLabelText("名前候補を確認し、サークル名にも使う"),
-  );
-  await user.click(
-    dialog.getByRole("button", { name: "候補をフォームに反映" }),
-  );
   await user.clear(dialog.getByLabelText(/^サークル名/));
-  await user.type(dialog.getByLabelText(/^サークル名/), "確認したサークル名");
-  // 上書き未選択では、確認済みの手入力を保持。
+  await user.type(dialog.getByLabelText(/^サークル名/), "架空の入力済み名");
   await user.click(
     dialog.getByRole("button", { name: "候補をフォームに反映" }),
   );
   expect((dialog.getByLabelText(/^サークル名/) as HTMLInputElement).value).toBe(
-    "確認したサークル名",
+    "架空サークルB",
   );
-  await user.click(dialog.getByLabelText("入力済み項目の上書きを許可する"));
+  // 日目だけの候補では場所・ホールは保持し、保存しない。
+  await user.clear(dialog.getByLabelText("Xの表示名"));
+  await user.type(dialog.getByLabelText("Xの表示名"), "架空サークルC 1日目");
+  await user.click(dialog.getByRole("button", { name: "読み取る" }));
   await user.click(
     dialog.getByRole("button", { name: "候補をフォームに反映" }),
   );
-  expect((dialog.getByLabelText(/^サークル名/) as HTMLInputElement).value).toBe(
-    "92M",
+  expect((dialog.getByLabelText(/^場所/) as HTMLInputElement).value).toBe(
+    "ユ-42ab",
   );
+  expect(
+    (dialog.getByLabelText(/^ホール 必須/) as HTMLSelectElement).value,
+  ).toBe("東");
+  expect(localStorage.getItem(key)).toBe(before);
+  await user.click(dialog.getByRole("radio", { name: "優先度4" }));
+  expect(dialog.getByText("現在の優先度：4 / 5（5が最高）")).toBeTruthy();
+  await user.keyboard("{ArrowRight}");
+  expect(
+    (dialog.getByRole("radio", { name: "優先度5（最高）" }) as HTMLInputElement)
+      .checked,
+  ).toBe(true);
   await user.clear(dialog.getByLabelText(/^サークル名/));
   await user.type(dialog.getByLabelText(/^サークル名/), "確認したサークル名");
   await user.clear(dialog.getByLabelText(/^場所/));
@@ -121,10 +135,10 @@ it("開催回作成・登録・編集・再起動復元・JSON読み戻し・削
   const saved = parseData(localStorage.getItem(key)!).events[0].circles[0];
   expect(saved).toMatchObject({
     name: "確認したサークル名",
-    day: "2日目",
+    day: "1日目",
     hall: "東",
     locationRaw: "ユ-43ab",
-    priority: 3,
+    priority: 5,
     link: "",
   });
   document.body.innerHTML = '<div id="root"></div>';
@@ -132,4 +146,15 @@ it("開催回作成・登録・編集・再起動復元・JSON読み戻し・削
   await import("./main");
   expect(await screen.findByText("確認したサークル名")).toBeTruthy();
   expect(screen.getByText("ユ-43ab")).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "編集" }));
+  expect(
+    (screen.getByRole("radio", { name: "優先度5（最高）" }) as HTMLInputElement)
+      .checked,
+  ).toBe(true);
+  await user.keyboard("{ArrowLeft}");
+  await user.click(screen.getByRole("radio", { name: "優先度2" }));
+  await user.click(screen.getByRole("button", { name: "変更を保存" }));
+  expect(
+    parseData(localStorage.getItem(key)!).events[0].circles[0].priority,
+  ).toBe(2);
 });

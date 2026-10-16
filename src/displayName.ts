@@ -103,23 +103,10 @@ export function readDisplayName(
   }
   return result;
 }
-export function applyRecognition(
-  current: Fields,
-  values: Partial<Fields>,
-  overwrite: boolean,
-  includeName: boolean,
-) {
+export function applyRecognition(current: Fields, values: Partial<Fields>) {
   const next = { ...current };
-  const kept: string[] = [];
   for (const k of ["name", "day", "hall", "location"] as const) {
-    if (k === "name" && !includeName) continue;
-    const value = values[k];
-    if (!value) continue;
-    if (current[k] && !overwrite) {
-      kept.push(k);
-      continue;
-    }
-    next[k] = value;
+    if (values[k]) next[k] = values[k];
   }
-  return { next, kept };
+  return next;
 }

@@ -1,3 +1,4 @@
+// 以下の名前・識別子・配置はすべて架空の検証データです。
 // @vitest-environment jsdom
 import React, { useState } from "react";
 import { it, expect } from "vitest";
@@ -35,7 +36,7 @@ it("曖昧なホールと存在しない日目を設定せず、原文と不足�
     screen.getByRole("button", { name: "候補をフォームに反映" }),
   );
   expect(JSON.parse(screen.getByTestId("values").textContent!)).toEqual({
-    name: "",
+    name: "作者",
     day: "",
     hall: "",
     location: "ユ-42ab",

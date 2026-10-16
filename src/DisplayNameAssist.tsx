@@ -18,14 +18,12 @@ export function DisplayNameAssist({
 }) {
   const [raw, setRaw] = useState(""),
     [result, setResult] = useState<Recognition | null>(null),
-    [overwrite, setOverwrite] = useState(false),
-    [includeName, setIncludeName] = useState(false),
     [status, setStatus] = useState("");
   return (
     <section className="display-assist" aria-label="X表示名から入力補助">
       <h3>Xの表示名から入力補助</h3>
       <p>
-        貼り付けた文字列だけを読み取ります。Xへのアクセスや保存は行いません。
+        貼り付けた文字列だけを読み取ります。Xへのアクセスや保存は行いません。入力例の名前・配置は架空です。
       </p>
       <label>
         Xの表示名
@@ -35,10 +33,8 @@ export function DisplayNameAssist({
             setRaw(e.target.value);
             setResult(null);
             setStatus("");
-            setIncludeName(false);
-            setOverwrite(false);
           }}
-          placeholder="例：晃田ヒカ@1日目南a-44ab"
+          placeholder="架空の例：架空サークルA@1日目南a-44ab"
         />
       </label>
       <button
@@ -69,7 +65,7 @@ export function DisplayNameAssist({
             </dd>
           </dl>
           <p>
-            人物名とサークル名は同一とは限りません。ブロックの文字種・大小文字は変換していません。
+            反映ボタンで名前候補も上書きします。人物名とサークル名は同一とは限らないため、フォームで確認・修正してください。ブロックの文字種・大小文字は変換していません。
           </p>
           {result.messages.length > 0 && (
             <ul>
@@ -78,34 +74,12 @@ export function DisplayNameAssist({
               ))}
             </ul>
           )}
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={includeName}
-              onChange={(e) => setIncludeName(e.target.checked)}
-            />
-            名前候補を確認し、サークル名にも使う
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={overwrite}
-              onChange={(e) => setOverwrite(e.target.checked)}
-            />
-            入力済み項目の上書きを許可する
-          </label>
           <button
             type="button"
             onClick={() => {
-              const { next, kept } = applyRecognition(
-                values,
-                result.values,
-                overwrite,
-                includeName,
-              );
-              onChange(next);
+              onChange(applyRecognition(values, result.values));
               setStatus(
-                `フォームに候補を反映しました。${kept.length ? "入力済み項目は保持しました。" : ""}不足項目を選び、内容を確認してから登録してください。まだ保存していません。`,
+                "認識できた項目を上書きしました。未認識・未確定の項目は元の値を保持しました。フォームで内容を確認・修正してから登録してください。まだ保存していません。",
               );
             }}
           >

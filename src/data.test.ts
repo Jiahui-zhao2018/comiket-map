@@ -1,3 +1,4 @@
+// 以下の名前・識別子・配置はすべて架空の検証データです。
 import { describe, it, expect } from "vitest";
 import {
   type Event,
@@ -139,8 +140,8 @@ describe("訪問手帳の保存契約", () => {
     ).toThrow();
   });
   it("URLとXユーザー名だけをリンクとして受け付ける", () => {
-    expect(validLink("@circle_01")).toBe(true);
-    expect(validLink("https://example.com")).toBe(true);
+    expect(validLink("@fiction_test01")).toBe(true);
+    expect(validLink("https://circle-a.example.invalid")).toBe(true);
     expect(validLink("javascript:alert(1)")).toBe(false);
   });
 });
