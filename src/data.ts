@@ -1,4 +1,14 @@
+export type PlacementEntry = {
+  day: string;
+  hall: string;
+  location: string;
+  mapId: string;
+  x: number;
+  y: number;
+  confirmed: true;
+};
 export type Circle = {
+  autoPlacementDisabled?: boolean;
   id: string;
   name: string;
   priority: number;
@@ -11,7 +21,7 @@ export type Circle = {
     x: number;
     y: number;
     status: "confirmed";
-    source: "manual" | "pdf";
+    source: "manual" | "pdf" | "mapping";
   };
 };
 export type Event = {
@@ -20,7 +30,9 @@ export type Event = {
   days: string[];
   halls: string[];
   circles: Circle[];
+  placementData?: PlacementEntry[];
   maps: {
+    day?: string;
     id: string;
     hall: string;
     asset: string;
@@ -84,6 +96,7 @@ export function parseData(text: string): Data {
     for (const m of e.maps) {
       if (
         !obj(m) ||
+        (m.day !== undefined && !e.days.includes(m.day)) ||
         !str(m.id) ||
         mids.has(m.id) ||
         !e.halls.includes(m.hall) ||
@@ -94,10 +107,35 @@ export function parseData(text: string): Data {
         return fail();
       mids.add(m.id);
     }
+    if (e.placementData !== undefined) {
+      if (!Array.isArray(e.placementData)) return fail();
+      for (const r of e.placementData) {
+        const map = e.maps.find((m: any) => m.id === r?.mapId);
+        if (
+          !obj(r) ||
+          !e.days.includes(r.day) ||
+          !e.halls.includes(r.hall) ||
+          !str(r.location) ||
+          r.confirmed !== true ||
+          !map ||
+          map.hall !== r.hall ||
+          (map.day !== undefined && map.day !== r.day) ||
+          !Number.isFinite(r.x) ||
+          !Number.isFinite(r.y) ||
+          r.x < 0 ||
+          r.x > 1 ||
+          r.y < 0 ||
+          r.y > 1
+        )
+          return fail();
+      }
+    }
     const cids = new Set<string>();
     for (const c of e.circles) {
       if (
         !obj(c) ||
+        (c.autoPlacementDisabled !== undefined &&
+          typeof c.autoPlacementDisabled !== "boolean") ||
         !str(c.id) ||
         cids.has(c.id) ||
         !str(c.name) ||
@@ -118,8 +156,10 @@ export function parseData(text: string): Data {
           !obj(p) ||
           !mids.has(p.mapId) ||
           e.maps.find((m: any) => m.id === p.mapId)?.hall !== c.hall ||
+          (e.maps.find((m: any) => m.id === p.mapId)?.day !== undefined &&
+            e.maps.find((m: any) => m.id === p.mapId)?.day !== c.day) ||
           p.status !== "confirmed" ||
-          !["manual", "pdf"].includes(p.source) ||
+          !["manual", "pdf", "mapping"].includes(p.source) ||
           typeof p.x !== "number" ||
           typeof p.y !== "number" ||
           !Number.isFinite(p.x) ||
@@ -157,7 +197,13 @@ export function updateCircle(e: Event, c: Circle): Event {
     ...e,
     circles: previous
       ? e.circles.map((x) =>
-          x.id === c.id ? { ...c, placement: moved ? null : c.placement } : x,
+          x.id === c.id
+            ? {
+                ...c,
+                placement: moved ? null : c.placement,
+                ...(moved ? { autoPlacementDisabled: false } : {}),
+              }
+            : x,
         )
       : [...e.circles, c],
     routes: Object.fromEntries(

@@ -13,6 +13,9 @@ import {
   updateCircle,
 } from "./data";
 import "./style.css";
+import { MapPanel } from "./MapPanel";
+import { autoPlace } from "./placement";
+import { createSampleEvent } from "./sampleMap";
 import { DisplayNameAssist } from "./DisplayNameAssist";
 const uid = () => crypto.randomUUID();
 function App() {
@@ -38,6 +41,7 @@ function App() {
     [query, setQuery] = useState(""),
     [day, setDay] = useState(""),
     [hall, setHall] = useState("");
+  const [tab, setTab] = useState("list");
   const event = data.events.find((e) => e.id === selected);
   function save(next: Data) {
     try {
@@ -71,6 +75,7 @@ function App() {
     setHall("");
     setQuery("");
     setEdit(undefined);
+    setTab("list");
   }
   function exportData() {
     const a = document.createElement("a");
@@ -142,6 +147,24 @@ function App() {
           <button className="add-event" onClick={() => setEventOpen(true)}>
             ＋ 開催回を追加
           </button>
+          <button
+            className="add-event"
+            onClick={() => {
+              try {
+                const sample = createSampleEvent();
+                if (save({ ...data, events: [...data.events, sample] })) {
+                  changeEvent(sample.id);
+                  setTab("map");
+                }
+              } catch (e) {
+                setError(
+                  e instanceof Error ? e.message : "サンプルを作成できません。",
+                );
+              }
+            }}
+          >
+            架空サンプル開催回を追加
+          </button>
           <div className="side-note">
             <strong>自分のペースで、巡ろう。</strong>
             <p>気になるサークルを集めて、当日の楽しみを少しずつ。</p>
@@ -179,10 +202,18 @@ function App() {
             )}
           </div>
           <div className="tabs">
-            <span className="current">サークル一覧</span>
-            <span>
-              マップ <small>準備中</small>
-            </span>
+            <button
+              className={tab === "list" ? "current" : ""}
+              onClick={() => setTab("list")}
+            >
+              サークル一覧
+            </button>
+            <button
+              className={tab === "map" ? "current" : ""}
+              onClick={() => setTab("map")}
+            >
+              マップ
+            </button>
             <span>
               訪問ルート <small>準備中</small>
             </span>
@@ -198,169 +229,178 @@ function App() {
             </div>
           )}
           {event ? (
-            <>
-              <section className="stats">
-                <div>
-                  <span>登録サークル</span>
-                  <strong>
-                    {event.circles.length}
-                    <small> サークル</small>
-                  </strong>
-                </div>
-                <div>
-                  <span>優先度 5</span>
-                  <strong>
-                    {event.circles.filter((c) => c.priority === 5).length}
-                    <small> サークル</small>
-                  </strong>
-                </div>
-                <div>
-                  <span>未配置</span>
-                  <strong>
-                    {event.circles.filter((c) => !c.placement).length}
-                    <small> サークル</small>
-                  </strong>
-                </div>
-              </section>
-              <section className="collection">
-                <div className="section-title">
-                  <h2>
-                    サークル一覧 <span>{circles.length}</span>
-                  </h2>
-                  <small>日目 → ホール → 優先度順</small>
-                </div>
-                <div className="filters">
-                  <input
-                    aria-label="サークル検索"
-                    placeholder="⌕ サークル名・場所で検索"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  <select
-                    aria-label="日目フィルター"
-                    value={day}
-                    onChange={(e) => setDay(e.target.value)}
-                  >
-                    <option value="">すべての日目</option>
-                    {event.days.map((d) => (
-                      <option key={d}>{d}</option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="ホールフィルター"
-                    value={hall}
-                    onChange={(e) => setHall(e.target.value)}
-                  >
-                    <option value="">すべてのホール</option>
-                    {event.halls.map((h) => (
-                      <option key={h}>{h}</option>
-                    ))}
-                  </select>
-                </div>
-                {circles.length ? (
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>サークル名 / リンク</th>
-                          <th>日目・ホール</th>
-                          <th>場所</th>
-                          <th>優先度</th>
-                          <th>配置</th>
-                          <th>操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {circles.map((c) => (
-                          <tr key={c.id}>
-                            <td>
-                              <strong>{c.name}</strong>
-                              {c.link && (
-                                <a
-                                  href={linkUrl(c.link)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {c.link} ↗
-                                </a>
-                              )}
-                            </td>
-                            <td>
-                              {c.day}
-                              <small>{c.hall}</small>
-                            </td>
-                            <td className="location">{c.locationRaw}</td>
-                            <td>
-                              <span className={"priority p" + c.priority}>
-                                ★ {c.priority}
-                              </span>
-                            </td>
-                            <td>
-                              <span className="placement">
-                                {c.placement ? "確認済み" : "未配置"}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="actions">
-                                <button onClick={() => setEdit(c)}>編集</button>
-                                <button
-                                  className="delete"
-                                  aria-label={c.name + "を削除"}
-                                  onClick={() => {
-                                    if (
-                                      confirm(`「${c.name}」を削除しますか？`)
-                                    )
-                                      saveEvent({
-                                        ...event,
-                                        circles: event.circles.filter(
-                                          (x) => x.id !== c.id,
-                                        ),
-                                        routes: Object.fromEntries(
-                                          Object.entries(event.routes).map(
-                                            ([d, ids]) => [
-                                              d,
-                                              ids.filter((id) => id !== c.id),
-                                            ],
-                                          ),
-                                        ),
-                                      });
-                                  }}
-                                >
-                                  削除
-                                </button>
-                              </div>
-                            </td>
+            tab === "map" ? (
+              <MapPanel key={event.id} event={event} onSave={saveEvent} />
+            ) : (
+              <>
+                <section className="stats">
+                  <div>
+                    <span>登録サークル</span>
+                    <strong>
+                      {event.circles.length}
+                      <small> サークル</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>優先度 5</span>
+                    <strong>
+                      {event.circles.filter((c) => c.priority === 5).length}
+                      <small> サークル</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>未配置</span>
+                    <strong>
+                      {event.circles.filter((c) => !c.placement).length}
+                      <small> サークル</small>
+                    </strong>
+                  </div>
+                </section>
+                <section className="collection">
+                  <div className="section-title">
+                    <h2>
+                      サークル一覧 <span>{circles.length}</span>
+                    </h2>
+                    <small>日目 → ホール → 優先度順</small>
+                  </div>
+                  <div className="filters">
+                    <input
+                      aria-label="サークル検索"
+                      placeholder="⌕ サークル名・場所で検索"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                    <select
+                      aria-label="日目フィルター"
+                      value={day}
+                      onChange={(e) => setDay(e.target.value)}
+                    >
+                      <option value="">すべての日目</option>
+                      {event.days.map((d) => (
+                        <option key={d}>{d}</option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label="ホールフィルター"
+                      value={hall}
+                      onChange={(e) => setHall(e.target.value)}
+                    >
+                      <option value="">すべてのホール</option>
+                      {event.halls.map((h) => (
+                        <option key={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {circles.length ? (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>サークル名 / リンク</th>
+                            <th>日目・ホール</th>
+                            <th>場所</th>
+                            <th>優先度</th>
+                            <th>配置</th>
+                            <th>操作</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="empty">
-                    <div>▤</div>
-                    <h3>
-                      {event.circles.length
-                        ? "条件に合うサークルがありません"
-                        : "最初のサークルを登録しましょう"}
-                    </h3>
-                    <p>
-                      {event.circles.length
-                        ? "検索や絞り込みの条件を変えてください。"
-                        : "サークル名と配置番号をメモして、訪問リストを作れます。"}
-                    </p>
-                    {!event.circles.length && (
-                      <button className="primary" onClick={() => setEdit(null)}>
-                        ＋ サークルを登録
-                      </button>
-                    )}
-                  </div>
-                )}
-              </section>
-              <p className="hint">
-                ⓘ
-                場所の入力原文を保存します。会場データとの対応が未確認のサークルは「未配置」です。
-              </p>
-            </>
+                        </thead>
+                        <tbody>
+                          {circles.map((c) => (
+                            <tr key={c.id}>
+                              <td>
+                                <strong>{c.name}</strong>
+                                {c.link && (
+                                  <a
+                                    href={linkUrl(c.link)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {c.link} ↗
+                                  </a>
+                                )}
+                              </td>
+                              <td>
+                                {c.day}
+                                <small>{c.hall}</small>
+                              </td>
+                              <td className="location">{c.locationRaw}</td>
+                              <td>
+                                <span className={"priority p" + c.priority}>
+                                  ★ {c.priority}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="placement">
+                                  {c.placement ? "確認済み" : "未配置"}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="actions">
+                                  <button onClick={() => setEdit(c)}>
+                                    編集
+                                  </button>
+                                  <button
+                                    className="delete"
+                                    aria-label={c.name + "を削除"}
+                                    onClick={() => {
+                                      if (
+                                        confirm(`「${c.name}」を削除しますか？`)
+                                      )
+                                        saveEvent({
+                                          ...event,
+                                          circles: event.circles.filter(
+                                            (x) => x.id !== c.id,
+                                          ),
+                                          routes: Object.fromEntries(
+                                            Object.entries(event.routes).map(
+                                              ([d, ids]) => [
+                                                d,
+                                                ids.filter((id) => id !== c.id),
+                                              ],
+                                            ),
+                                          ),
+                                        });
+                                    }}
+                                  >
+                                    削除
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="empty">
+                      <div>▤</div>
+                      <h3>
+                        {event.circles.length
+                          ? "条件に合うサークルがありません"
+                          : "最初のサークルを登録しましょう"}
+                      </h3>
+                      <p>
+                        {event.circles.length
+                          ? "検索や絞り込みの条件を変えてください。"
+                          : "サークル名と配置番号をメモして、訪問リストを作れます。"}
+                      </p>
+                      {!event.circles.length && (
+                        <button
+                          className="primary"
+                          onClick={() => setEdit(null)}
+                        >
+                          ＋ サークルを登録
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </section>
+                <p className="hint">
+                  ⓘ
+                  場所の入力原文を保存します。会場データとの対応が未確認のサークルは「未配置」です。
+                </p>
+              </>
+            )
           ) : (
             <section className="welcome">
               <span>▦</span>
@@ -401,7 +441,8 @@ function App() {
             event={event}
             circle={edit}
             submit={(c) => {
-              if (saveEvent(updateCircle(event, c))) setEdit(undefined);
+              if (saveEvent(autoPlace(updateCircle(event, c))))
+                setEdit(undefined);
             }}
           />
         </Modal>
@@ -566,6 +607,9 @@ export function CircleForm({
           locationRaw,
           link,
           placement: circle?.placement || null,
+          ...(circle?.autoPlacementDisabled !== undefined
+            ? { autoPlacementDisabled: circle.autoPlacementDisabled }
+            : {}),
         });
       }}
     >
